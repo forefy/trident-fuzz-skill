@@ -1,8 +1,4 @@
----
-name: trident-phase-3-construction
-description: "Phase 3 of Trident fuzzing: design modular flows, write instruction builders, and compose #[end] assertions from invariant modules."
-type: reference
----
+# Phase 3 of Trident fuzzing: design modular flows, write instruction builders, and compose #[end] assertions from invariant modules.
 
 # Phase 3: Test Construction
 
@@ -10,27 +6,27 @@ type: reference
 
 ---
 
-## Step 3.1 — Design flows
+## Step 3.1 - Design flows
 
 Each `#[flow]` method = one transaction path the fuzzer randomly selects.
 
 ### Flow design principles
 
-1. **Flows must be independent** — any ordering should be valid.
-2. **Never panic on transaction failure in flows** — both success and revert are valid.
-3. **Track success/revert counts per flow type** — needed for non-triviality guards and debugging.
-4. **Use `common/instructions.rs` builders** — flows should be 3-5 lines, not 50.
-5. **Cover both directions** — deposit AND withdraw, borrow AND repay.
+1. **Flows must be independent** - any ordering should be valid.
+2. **Never panic on transaction failure in flows** - both success and revert are valid.
+3. **Track success/revert counts per flow type** - needed for non-triviality guards and debugging.
+4. **Use `common/instructions.rs` builders** - flows should be 3-5 lines, not 50.
+5. **Cover both directions** - deposit AND withdraw, borrow AND repay.
 
 ### Flow categories to consider
 
-| Category | Purpose | Example | Frequency |
-| -------- | ------- | ------- | --------- |
-| **Happy path** | Normal operations, random amounts | deposit, withdraw | Every iteration, multiple times |
-| **Cross-protocol** | Operations on another protocol sharing state | lending deposit/withdraw | Every iteration, multiple times |
-| **Adversarial** | Irreversible state transitions | oracle crash + liquidate | Once per iteration (guard with bool) |
-| **Post-event** | Operations after irreversible changes | operate on liquidated position | Once, after adversarial flow |
-| **Time-based** | Advance clock between operations | `forward_in_time` + accrue | Every iteration |
+| Category           | Purpose                                      | Example                        | Frequency                            |
+| ------------------ | -------------------------------------------- | ------------------------------ | ------------------------------------ |
+| **Happy path**     | Normal operations, random amounts            | deposit, withdraw              | Every iteration, multiple times      |
+| **Cross-protocol** | Operations on another protocol sharing state | lending deposit/withdraw       | Every iteration, multiple times      |
+| **Adversarial**    | Irreversible state transitions               | oracle crash + liquidate       | Once per iteration (guard with bool) |
+| **Post-event**     | Operations after irreversible changes        | operate on liquidated position | Once, after adversarial flow         |
+| **Time-based**     | Advance clock between operations             | `forward_in_time` + accrue     | Every iteration                      |
 
 ### Handling architectural constraints
 
@@ -65,7 +61,7 @@ let mut price_data = self.trident.get_raw_account(&oracle_price_pk);
 self.trident.set_account_custom(&oracle_price_pk, &price_data);
 ```
 
-## Step 3.2 — Write instruction builders in `common/instructions.rs`
+## Step 3.2 - Write instruction builders in `common/instructions.rs`
 
 Each builder takes `Trident` + accounts, returns `TransactionResult`. The caller decides success/failure handling:
 
@@ -94,7 +90,7 @@ pub fn do_operate(
 }
 ```
 
-## Step 3.3 — Write flows in `test_fuzz.rs`
+## Step 3.3 - Write flows in `test_fuzz.rs`
 
 Flows become thin wrappers around instruction builders:
 
@@ -119,7 +115,7 @@ fn flow_withdraw(&mut self) {
 }
 ```
 
-## Step 3.4 — Compose `#[end]` from invariant modules
+## Step 3.4 - Compose `#[end]` from invariant modules
 
 Call invariant functions from `common/invariants.rs`:
 
@@ -149,7 +145,7 @@ fn end(&mut self) {
 }
 ```
 
-## Step 3.5 — Set `main()` parameters
+## Step 3.5 - Set `main()` parameters
 
 ```rust
 fn main() {

@@ -1,10 +1,4 @@
----
-name: trident-api-v0.12
-description: "Trident v0.12.0 API quick reference. Version-dependent — replace this file when Trident updates. Phase files (1-5) are version-independent."
-type: reference
----
-
-# Trident API — v0.12.0
+# Trident v0.12.0 API quick reference. Version-dependent - replace this file when Trident updates. Phase files (1-5) are version-independent.
 
 Replace this file when Trident releases a new version. The 5 phase files describe the workflow and are version-independent.
 
@@ -86,20 +80,20 @@ self.trident.forward_in_time(seconds);
 ## Token Helpers (requires `features = ["token"]`)
 
 ```rust
-// Token-2022 — return Vec<Instruction>
+// Token-2022 - return Vec<Instruction>
 initialize_mint_2022(payer, mint, decimals, authority, freeze_auth, &[MintExtension])
 initialize_token_account_2022(payer, account, mint, owner, &[AccountExtension])
 initialize_associated_token_account_2022(payer, mint, owner, &[AccountExtension])
 
-// Token-2022 — return single Instruction
+// Token-2022 - return single Instruction
 mint_to_2022(token_account, mint, authority, amount)
 transfer_checked(source, dest, mint, authority, &[signers], amount, decimals)
 
-// Legacy SPL — return Vec<Instruction>
+// Legacy SPL - return Vec<Instruction>
 initialize_mint(payer, mint, decimals, authority, freeze_auth)
 initialize_token_account(payer, account, mint, owner)
 
-// Legacy SPL — return single Instruction
+// Legacy SPL - return single Instruction
 initialize_associated_token_account(payer, mint, owner)
 ```
 

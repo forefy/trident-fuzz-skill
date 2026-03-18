@@ -1,34 +1,30 @@
----
-name: trident-phase-1-setup
-description: "Phase 1 of Trident fuzzing: analyze target program, map account dependency graph, generate modular scaffolding files."
-type: reference
----
+# Phase 1 of Trident fuzzing: analyze target program, map account dependency graph, generate modular scaffolding files."
 
 # Phase 1: Setup & Account Graph
 
-**GOAL:** Generate the scaffolding and a modular, reusable `setup.rs` so that every iteration starts from a valid protocol state — and future campaigns can reuse it.
+**GOAL:** Generate the scaffolding and a modular, reusable `setup.rs` so that every iteration starts from a valid protocol state - and future campaigns can reuse it.
 
 ---
 
-## Step 1.1 — Identify the target
+## Step 1.1 - Identify the target
 
 Ask or determine:
 
 - Which program(s) are being fuzzed?
 - Which instruction(s) are the fuzzing targets?
 - Which CPI targets does the program call?
-- What token standard is used? (Token-2022 vs legacy SPL — affects ATA derivation)
+- What token standard is used? (Token-2022 vs legacy SPL - affects ATA derivation)
 - **Is there a dynamic-PDA problem?** Does the target instruction compute a PDA from user input (e.g., borrow amount -> tick -> tick PDA)? If yes, random inputs require random pre-initialized PDAs. Scope down or pre-initialize a range.
 
-## Step 1.2 — Map the account graph
+## Step 1.2 - Map the account graph
 
 For each target instruction, read its `#[derive(Accounts)]` struct. List every account:
 
-| Account | Type | Seeds / Derivation | Program | Needs init? |
-| ------- | ---- | ------------------ | ------- | ----------- |
-| signer | Keypair | -- | -- | airdrop only |
-| vault_config | PDA | `[b"vault_config", id.to_le_bytes()]` | vaults | yes |
-| user_ata | ATA | derived from mint x owner | Token-2022 | yes |
+| Account      | Type    | Seeds / Derivation                    | Program    | Needs init?  |
+| ------------ | ------- | ------------------------------------- | ---------- | ------------ |
+| signer       | Keypair | --                                    | --         | airdrop only |
+| vault_config | PDA     | `[b"vault_config", id.to_le_bytes()]` | vaults     | yes          |
+| user_ata     | ATA     | derived from mint x owner             | Token-2022 | yes          |
 
 **Walk the dependency chain backwards.** For each account that needs init, find that init instruction's accounts, and recurse. Build a topological ordering.
 
@@ -36,31 +32,31 @@ For each target instruction, read its `#[derive(Accounts)]` struct. List every a
 
 Grep the init instructions for these patterns. Each one burned us at least once:
 
-| Pattern | What to look for | Example fix |
-| ------- | ---------------- | ----------- |
-| **Supply gate** | `max_ceiling <= N * total_supply` | Mint tokens before setting ceiling |
-| **Version gate** | `model.version != 0` | Call `update_rate_data` before `update_config` |
-| **Utilization gate** | `reserve.max_utilization != 0` | Call `update_token_config` before `update_user_config` |
-| **Program ID vs PDA** | Init takes a program ID, not a state PDA | Pass `program::program_id()` not the PDA |
-| **Counter start** | ID counters start at 1, not 0 | Use `1u32` in PDA seeds for first position |
-| **Duration bounds** | `expand_duration > 0 && <= 0xffffff` | Use 172800 (2 days), not 0 |
-| **Casting limits** | Field stored as u64 but API accepts u128 | Use `u64::MAX as u128`, not `u128::MAX` |
-| **Source type arity** | Oracle source types require N accounts | `Pyth` needs 1 source, `JupLend` needs 4 |
-| **AccountLoader vs UncheckedAccount** | Account type requires initialization even if unused | Initialize tick accounts even for deposit-only |
-| **Optional but required** | `Option<UncheckedAccount>` must still be passed | Derive the PDA address, pass uninitialized |
+| Pattern                               | What to look for                                    | Example fix                                            |
+| ------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| **Supply gate**                       | `max_ceiling <= N * total_supply`                   | Mint tokens before setting ceiling                     |
+| **Version gate**                      | `model.version != 0`                                | Call `update_rate_data` before `update_config`         |
+| **Utilization gate**                  | `reserve.max_utilization != 0`                      | Call `update_token_config` before `update_user_config` |
+| **Program ID vs PDA**                 | Init takes a program ID, not a state PDA            | Pass `program::program_id()` not the PDA               |
+| **Counter start**                     | ID counters start at 1, not 0                       | Use `1u32` in PDA seeds for first position             |
+| **Duration bounds**                   | `expand_duration > 0 && <= 0xffffff`                | Use 172800 (2 days), not 0                             |
+| **Casting limits**                    | Field stored as u64 but API accepts u128            | Use `u64::MAX as u128`, not `u128::MAX`                |
+| **Source type arity**                 | Oracle source types require N accounts              | `Pyth` needs 1 source, `JupLend` needs 4               |
+| **AccountLoader vs UncheckedAccount** | Account type requires initialization even if unused | Initialize tick accounts even for deposit-only         |
+| **Optional but required**             | `Option<UncheckedAccount>` must still be passed     | Derive the PDA address, pass uninitialized             |
 
-## Step 1.3 — Read `types.rs`
+## Step 1.3 - Read `types.rs`
 
 After `trident init`, `types.rs` is auto-generated (can be 500KB+). **Read it before writing any code.** You need:
 
-1. **Module names** — one per program. Import path: `crate::types::module_name::*`
-2. **`::new()` constructor parameter order** — the #1 source of compile errors. The parameter order in `::new()` matches the account order in the `#[derive(Accounts)]` struct, which may NOT match the order you'd expect.
-3. **Data struct fields** — what arguments the instruction takes and their types.
-4. **State struct layouts** — for `get_account_with_type` in invariant checks.
+1. **Module names** - one per program. Import path: `crate::types::module_name::*`
+2. **`::new()` constructor parameter order** - the #1 source of compile errors. The parameter order in `::new()` matches the account order in the `#[derive(Accounts)]` struct, which may NOT match the order you'd expect.
+3. **Data struct fields** - what arguments the instruction takes and their types.
+4. **State struct layouts** - for `get_account_with_type` in invariant checks.
 
 **Tip:** Search `types.rs` for `pub fn new` to find all constructors quickly.
 
-## Step 1.4 — Generate modular files
+## Step 1.4 - Generate modular files
 
 ### `common/constants.rs`
 
@@ -172,7 +168,7 @@ pub fn check_bitmap_sync(trident: &Trident, thd_pk: &Pubkey, tick_pk: &Pubkey) {
 pub fn check_cross_protocol_supply(/* ... */) { /* ... */ }
 ```
 
-### `fuzz_0/test_fuzz.rs` — now small and clean
+### `fuzz_0/test_fuzz.rs` - now small and clean
 
 ```rust
 use trident_fuzz::fuzzing::*;
@@ -239,9 +235,9 @@ impl FuzzTest {
 fn main() { FuzzTest::fuzz(1000, 100); }
 ```
 
-## Step 1.5 — Present the PDA seed table
+## Step 1.5 - Present the PDA seed table
 
-Document every PDA in the campaign. Seed mismatches are silent killers — the init succeeds but the instruction that reads the PDA gets a different address and reverts.
+Document every PDA in the campaign. Seed mismatches are silent killers - the init succeeds but the instruction that reads the PDA gets a different address and reverts.
 
 ```text
 Account                  Seeds                                              Program
@@ -255,17 +251,17 @@ position_token_account   ATA(position_mint, signer)                        SPL_T
 metadata_account         [b"metadata", METAPLEX_ID, position_mint]         metaplex
 ```
 
-## Step 1.6 — Present setup dependency table
+## Step 1.6 - Present setup dependency table
 
-| Step | Function | Purpose | Depends on | Gotcha |
-| ---- | -------- | ------- | ---------- | ------ |
-| 1 | `airdrop` | Fund accounts | -- | 100 SOL minimum |
-| 2 | `create_mints` | Supply + borrow mints | 1 | Token-2022 |
-| 2b | `mint_to_2022` | Pre-mint borrow tokens | 2 | `max_ceiling <= 10 * total_supply` |
-| 3 | `init_oracle` | Oracle admin + config | 1 | Use Pyth (1 acct) not JupLend (4) |
-| 4 | `init_liquidity_layer` | Reserves + rate models | 2, 3 | rate_data before token_config |
-| 5 | `init_vault` | Admin + config + state | 3, 4 | program ID not PDA for admin |
-| 6 | `init_position` | Position + NFT | 5 | pos_id=1, legacy SPL for NFT |
-| 7 | `fund_user` | Supply ATA + tokens | 2, 6 | Token-2022 for ATA |
+| Step | Function               | Purpose                | Depends on | Gotcha                             |
+| ---- | ---------------------- | ---------------------- | ---------- | ---------------------------------- |
+| 1    | `airdrop`              | Fund accounts          | --         | 100 SOL minimum                    |
+| 2    | `create_mints`         | Supply + borrow mints  | 1          | Token-2022                         |
+| 2b   | `mint_to_2022`         | Pre-mint borrow tokens | 2          | `max_ceiling <= 10 * total_supply` |
+| 3    | `init_oracle`          | Oracle admin + config  | 1          | Use Pyth (1 acct) not JupLend (4)  |
+| 4    | `init_liquidity_layer` | Reserves + rate models | 2, 3       | rate_data before token_config      |
+| 5    | `init_vault`           | Admin + config + state | 3, 4       | program ID not PDA for admin       |
+| 6    | `init_position`        | Position + NFT         | 5          | pos_id=1, legacy SPL for NFT       |
+| 7    | `fund_user`            | Supply ATA + tokens    | 2, 6       | Token-2022 for ATA                 |
 
 **STOP. Wait for user approval before Phase 2.**
